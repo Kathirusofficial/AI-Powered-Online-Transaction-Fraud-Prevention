@@ -1,0 +1,104 @@
+{
+  "model_version": "v1.0.0",
+  "algorithm": "XGBoost Classifier",
+  "target_column": "is_fraud",
+  "train_dataset_path": "C:\\Users\\Administrator\\Downloads\\archive\\fraudTrain.csv",
+  "test_dataset_path": "C:\\Users\\Administrator\\Downloads\\archive\\fraudTest.csv",
+  "training_samples": 1296675,
+  "testing_samples": 555719,
+  "training_genuine": 1289169,
+  "training_fraud": 7506,
+  "testing_genuine": 553574,
+  "testing_fraud": 2145,
+  "scale_pos_weight": 171.75179856115108,
+  "feature_count": 20,
+  "feature_columns": [
+    "amt",
+    "distance_km",
+    "customer_age",
+    "trans_hour",
+    "trans_dayofweek",
+    "city_pop",
+    "category_food_dining",
+    "category_gas_transport",
+    "category_grocery_net",
+    "category_grocery_pos",
+    "category_health_fitness",
+    "category_home",
+    "category_kids_pets",
+    "category_misc_net",
+    "category_misc_pos",
+    "category_personal_care",
+    "category_shopping_net",
+    "category_shopping_pos",
+    "category_travel",
+    "gender_M"
+  ],
+  "categorical_features": [
+    "category",
+    "gender"
+  ],
+  "categories_map": {
+    "category": [
+      "entertainment",
+      "food_dining",
+      "gas_transport",
+      "grocery_net",
+      "grocery_pos",
+      "health_fitness",
+      "home",
+      "kids_pets",
+      "misc_net",
+      "misc_pos",
+      "personal_care",
+      "shopping_net",
+      "shopping_pos",
+      "travel"
+    ],
+    "gender": [
+      "F",
+      "M"
+    ]
+  },
+  "hyperparameters": {
+    "n_estimators": 100,
+    "max_depth": 6,
+    "learning_rate": 0.1,
+    "scale_pos_weight": 171.75179856115108,
+    "tree_method": "hist",
+    "random_state": 42,
+    "eval_metric": "logloss"
+  },
+  "training_duration_seconds": 5.22,
+  "evaluation_duration_seconds": 0.39,
+  "metrics": {
+    "accuracy": 0.9842,
+    "precision": 0.1915,
+    "recall": 0.9627,
+    "f1_score": 0.3194,
+    "roc_auc": 0.9971,
+    "confusion_matrix": {
+      "true_negative": 544855,
+      "false_positive": 8719,
+      "false_negative": 80,
+      "true_positive": 2065
+    }
+  },
+  "dataset_feature_mapping": {
+    "amount": "amt (Numeric)",
+    "merchant_category": "category (Categorical - OneHot Encoded)",
+    "distance_from_previous": "distance_km (Haversine derived from lat, long, merch_lat, merch_long)",
+    "account_age": "customer_age (Years derived from trans_date_trans_time & dob)",
+    "trans_hour": "trans_hour (Derived from trans_date_trans_time)",
+    "trans_dayofweek": "trans_dayofweek (Derived from trans_date_trans_time)",
+    "city_pop": "city_pop (Numeric)",
+    "gender": "gender (Categorical - OneHot Encoded)"
+  },
+  "documented_unavailable_features": [
+    "ip_risk_score (No IP risk telemetry in Kaggle credit card dataset - excluded from ML model)",
+    "device_type (No device type telemetry in dataset - excluded from ML model)",
+    "previous_fraud_count (No historical fraud flag column in dataset - excluded from ML model)",
+    "previous_transaction_amount (No sequential previous amount column in dataset - excluded from ML model)",
+    "transaction_frequency (No daily frequency column in dataset - excluded from ML model)"
+  ]
+}
