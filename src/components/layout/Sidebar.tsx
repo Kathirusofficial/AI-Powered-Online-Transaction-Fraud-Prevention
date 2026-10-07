@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Activity, ScanSearch, ArrowLeftRight, Bell, BarChart3, User, Settings, HelpCircle, LogOut, X } from 'lucide-react';
 import Logo from './Logo';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,17 +15,19 @@ const navItems = [
   { to: '/monitor', label: 'Live Monitor', icon: Activity },
   { to: '/detect', label: 'Manual Analysis', icon: ScanSearch },
   { to: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
-  { to: '/alerts', label: 'Fraud Alerts', icon: Bell },
+  { to: '/fraud-alerts', label: 'Fraud Alerts', icon: Bell, altPaths: ['/alerts'] },
   { to: '/analytics', label: 'Analytics', icon: BarChart3 },
 ];
 
 const bottomNavItems = [
   { to: '/profile', label: 'Profile', icon: User },
   { to: '/settings', label: 'Settings', icon: Settings },
+  { to: '/help', label: 'Help', icon: HelpCircle },
 ];
 
 export default function Sidebar({ open, onClose }: SidebarProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { logout } = useAuth();
 
   const handleLogout = () => {
@@ -50,12 +52,13 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
           {navItems.map(item => {
             const Icon = item.icon;
+            const isCustomActive = item.altPaths?.includes(location.pathname);
             return (
               <NavLink
                 key={item.to}
                 to={item.to}
                 onClick={onClose}
-                className={({ isActive }) => classNames('nav-link', isActive && 'nav-link-active')}
+                className={({ isActive }) => classNames('nav-link', (isActive || isCustomActive) && 'nav-link-active')}
               >
                 <Icon className="w-5 h-5 shrink-0" />
                 <span className="font-medium text-sm">{item.label}</span>
@@ -79,10 +82,6 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
               </NavLink>
             );
           })}
-          <div className="nav-link cursor-default mt-4 opacity-70">
-            <HelpCircle className="w-5 h-5 shrink-0" />
-            <span className="font-medium text-sm">Help</span>
-          </div>
           <button onClick={handleLogout} className="nav-link w-full text-left text-danger hover:bg-danger/10 mt-1">
             <LogOut className="w-5 h-5 shrink-0" />
             <span className="font-medium text-sm">Logout</span>
@@ -127,8 +126,11 @@ export function AdminSidebar({ open, onClose }: SidebarProps) {
           ))}
         </nav>
         <div className="px-4 py-6 border-t border-border space-y-1.5">
-          <NavLink to="/settings" className={({ isActive }) => classNames('nav-link', isActive && 'nav-link-active')}>
+          <NavLink to="/settings" onClick={onClose} className={({ isActive }) => classNames('nav-link', isActive && 'nav-link-active')}>
              <Settings className="w-5 h-5 shrink-0" /><span className="font-medium text-sm">Settings</span>
+          </NavLink>
+          <NavLink to="/help" onClick={onClose} className={({ isActive }) => classNames('nav-link', isActive && 'nav-link-active')}>
+             <HelpCircle className="w-5 h-5 shrink-0" /><span className="font-medium text-sm">Help</span>
           </NavLink>
           <button onClick={handleLogout} className="nav-link w-full text-left text-danger hover:bg-danger/10">
             <LogOut className="w-5 h-5 shrink-0" /><span className="font-medium text-sm">Logout</span>

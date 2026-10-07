@@ -1,11 +1,14 @@
+import { Link } from 'react-router-dom';
 import { Shield } from 'lucide-react';
 import { classNames } from '@/utils/helpers';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function Logo({ size = 'md', showText = true }: { size?: 'sm' | 'md' | 'lg'; showText?: boolean }) {
+  const { user } = useAuth();
   const iconSizes = { sm: 'w-6 h-6', md: 'w-8 h-8', lg: 'w-10 h-10' };
   const textSizes = { sm: 'text-sm', md: 'text-base', lg: 'text-lg' };
   return (
-    <div className="flex items-center gap-2.5">
+    <Link to={user ? "/dashboard" : "/"} className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
       <div className={classNames('flex items-center justify-center shrink-0', iconSizes[size])}>
         <Shield className={classNames('text-primary', size === 'lg' ? 'w-8 h-8' : 'w-6 h-6')} strokeWidth={2.5} />
       </div>
@@ -15,6 +18,6 @@ export default function Logo({ size = 'md', showText = true }: { size?: 'sm' | '
           <span className="text-[10px] font-semibold text-primary uppercase tracking-widest leading-none mt-0.5">Financial Security</span>
         </div>
       )}
-    </div>
+    </Link>
   );
 }

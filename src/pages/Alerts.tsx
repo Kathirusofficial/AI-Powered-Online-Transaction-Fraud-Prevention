@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, CheckCheck, Filter, AlertTriangle } from 'lucide-react';
+import { Bell, CheckCheck, AlertTriangle } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Badge } from '@/components/common/Badge';
 import { LoadingState, EmptyState } from '@/components/common/States';
@@ -32,7 +32,6 @@ export default function Alerts() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
-  const [unreadOnly, setUnreadOnly] = useState(false);
 
   useEffect(() => {
     getAlerts().then(a => { setAlerts(a); setLoading(false); });
@@ -41,9 +40,8 @@ export default function Alerts() {
   const filtered = useMemo(() => {
     let result = [...alerts];
     if (filter !== 'all') result = result.filter(a => a.severity === filter);
-    if (unreadOnly) result = result.filter(a => !a.read);
     return result.sort((a, b) => b.riskScore - a.riskScore);
-  }, [alerts, filter, unreadOnly]);
+  }, [alerts, filter]);
 
   const markRead = (id: string) => {
     setAlerts(a => a.map(x => x.id === id ? { ...x, read: true } : x));

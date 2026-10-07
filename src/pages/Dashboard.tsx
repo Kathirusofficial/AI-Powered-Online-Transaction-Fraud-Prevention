@@ -43,11 +43,11 @@ export default function Dashboard() {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          <KPICard label="TOTAL TRANSACTIONS" value={formatNumber(stats?.totalTransactions ?? 0)} icon={<ArrowLeftRight className="w-5 h-5" />} />
-          <KPICard label="GENUINE" value={formatNumber(stats?.genuine ?? 0)} icon={<ShieldCheck className="w-5 h-5" />} accent="success" />
-          <KPICard label="SUSPICIOUS" value={formatNumber(stats?.suspicious ?? 0)} icon={<AlertTriangle className="w-5 h-5" />} accent="warning" />
-          <KPICard label="FRAUD DETECTED" value={formatNumber(stats?.fraud ?? 0)} icon={<AlertTriangle className="w-5 h-5" />} accent="danger" />
-          <KPICard label="FRAUD RATE" value={`${stats?.fraudRate ?? 0}%`} icon={<Percent className="w-5 h-5" />} accent="danger" />
+          <KPICard label="TOTAL TRANSACTIONS" value={formatNumber(stats?.totalTransactions ?? 0)} icon={<ArrowLeftRight className="w-5 h-5" />} to="/transactions" />
+          <KPICard label="GENUINE" value={formatNumber(stats?.genuine ?? 0)} icon={<ShieldCheck className="w-5 h-5" />} accent="success" to="/transactions?filter=genuine" />
+          <KPICard label="SUSPICIOUS" value={formatNumber(stats?.suspicious ?? 0)} icon={<AlertTriangle className="w-5 h-5" />} accent="warning" to="/transactions?filter=suspicious" />
+          <KPICard label="FRAUD DETECTED" value={formatNumber(stats?.fraud ?? 0)} icon={<AlertTriangle className="w-5 h-5" />} accent="danger" to="/fraud-alerts" />
+          <KPICard label="FRAUD RATE" value={`${stats?.fraudRate ?? 0}%`} icon={<Percent className="w-5 h-5" />} accent="danger" to="/fraud-alerts" />
         </div>
 
         {/* Main Dashboard Area */}
@@ -80,21 +80,22 @@ export default function Dashboard() {
                 const isCritical = txn.riskScore >= 90;
                 const isHigh = txn.riskScore >= 75 && txn.riskScore < 90;
                 const isMedium = txn.riskScore >= 50 && txn.riskScore < 75;
-                const isLow = txn.riskScore < 50;
 
                 const riskText = isCritical ? 'CRITICAL' : isHigh ? 'HIGH' : isMedium ? 'MEDIUM' : 'LOW';
                 const riskColor = isCritical ? 'text-danger' : isHigh ? 'text-warning' : isMedium ? 'text-warning/70' : 'text-success';
 
                 return (
-                  <div key={txn.id} className="flex items-center justify-between p-4 hover:bg-background/50 transition-colors">
+                  <Link key={txn.id} to={`/transactions/${txn.id}`} className="flex items-center justify-between p-4 hover:bg-background/60 transition-colors group">
                     <div className="flex items-center gap-8 w-1/3">
                        <span className={classNames('text-xs font-bold w-20', riskColor)}>{riskText}</span>
-                       <span className="text-sm font-mono text-text-primary">{txn.id}</span>
+                       <span className="text-sm font-mono text-text-primary group-hover:text-primary transition-colors">{txn.id}</span>
                     </div>
                     <div className="w-1/4 text-sm text-text-primary">{formatCurrency(txn.amount)}</div>
                     <div className="w-1/4 text-sm font-medium text-text-primary">Score: {txn.riskScore}</div>
-                    <div className="w-1/6 text-right text-xs text-text-secondary">Just now</div>
-                  </div>
+                    <div className="w-1/6 text-right text-xs text-text-secondary flex items-center justify-end gap-1 group-hover:text-primary transition-colors">
+                      <span>View</span> <ArrowRight className="w-3 h-3" />
+                    </div>
+                  </Link>
                 );
               })
             )}

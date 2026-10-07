@@ -10,7 +10,6 @@ import {
   ShieldCheck, 
   AlertTriangle, 
   Clock, 
-  RefreshCw, 
   ArrowRight,
   AlertCircle,
   Eye
@@ -22,11 +21,19 @@ import {
   getMLServiceHealth, 
   ingestTransaction, 
   getTransactions, 
-  DEMO_TRANSACTION_PROFILES, 
   type MLHealthStatus 
 } from '@/services/fraudService';
 import type { Transaction } from '@/types';
-import { formatCurrency, classNames, riskColors } from '@/utils/helpers';
+import { formatCurrency, classNames } from '@/utils/helpers';
+
+const DEMO_TRANSACTION_PROFILES = [
+  { amount: 18.50, type: 'Payment', merchantCategory: 'Groceries', location: 'Los Angeles, US', accountAge: 365, previousTransactionAmount: 22.0, transactionFrequency: 3, previousFraudCount: 0, distanceFromPrevious: 2.0, deviceType: 'Mobile', ipRiskScore: 12 },
+  { amount: 4500.00, type: 'Transfer', merchantCategory: 'Travel', location: 'Overseas Terminal', accountAge: 45, previousTransactionAmount: 50.0, transactionFrequency: 15, previousFraudCount: 1, distanceFromPrevious: 1500.0, deviceType: 'Unknown', ipRiskScore: 90 },
+  { amount: 42.80, type: 'Payment', merchantCategory: 'Food & Dining', location: 'San Francisco, US', accountAge: 720, previousTransactionAmount: 35.0, transactionFrequency: 2, previousFraudCount: 0, distanceFromPrevious: 4.5, deviceType: 'Mobile', ipRiskScore: 15 },
+  { amount: 1250.00, type: 'Purchase', merchantCategory: 'Online', location: 'Miami, US', accountAge: 90, previousTransactionAmount: 80.0, transactionFrequency: 8, previousFraudCount: 0, distanceFromPrevious: 650.0, deviceType: 'Desktop', ipRiskScore: 75 },
+  { amount: 8.50, type: 'Payment', merchantCategory: 'Gas', location: 'Chicago, US', accountAge: 500, previousTransactionAmount: 15.0, transactionFrequency: 1, previousFraudCount: 0, distanceFromPrevious: 1.2, deviceType: 'Mobile', ipRiskScore: 8 },
+  { amount: 3200.00, type: 'Purchase', merchantCategory: 'Electronics', location: 'New York, US', accountAge: 60, previousTransactionAmount: 120.0, transactionFrequency: 11, previousFraudCount: 0, distanceFromPrevious: 820.0, deviceType: 'Tablet', ipRiskScore: 80 },
+];
 
 export default function Monitor() {
   const { toast } = useToast();
@@ -81,6 +88,7 @@ export default function Monitor() {
       
       const { transaction, result } = await ingestTransaction({
         ...profile,
+        location: `${profile.location} (Demo Ingestion)`,
         date: now.toISOString().split('T')[0],
         time: timeStr.slice(0, 5),
       });
@@ -90,9 +98,10 @@ export default function Monitor() {
       if (result.prediction === 'Fraud' || result.riskLevel === 'Critical') {
         toast(`⚠️ Fraud Alert Generated: $${profile.amount.toFixed(2)} (${profile.merchantCategory}) - Score ${result.riskScore}/100`, 'error');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Ingestion error:', err);
-      toast(err?.message || 'Ingestion failed: ML Service Unavailable', 'error');
+      const msg = (err as Error)?.message || 'Ingestion failed: ML Service Unavailable';
+      toast(msg, 'error');
       setStreamState('stopped');
     } finally {
       setIsProcessing(false);
@@ -140,7 +149,6 @@ export default function Monitor() {
   };
 
   // Stats calculation
-  const totalAnalyzed = liveTxns.length;
   const fraudCount = liveTxns.filter(t => t.prediction === 'Fraud').length;
   const genuineCount = liveTxns.filter(t => t.prediction === 'Genuine').length;
   const criticalAlerts = liveTxns.filter(t => t.riskLevel === 'Critical').length;

@@ -4,27 +4,42 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import Input from '@/components/common/Input';
 import Button from '@/components/common/Button';
 import { useToast } from '@/hooks/useToast';
+import { useAuth } from '@/hooks/useAuth';
+import { useTheme, type Theme } from '@/hooks/useTheme';
+import { updatePassword } from '@/services/fraudService';
 import { classNames } from '@/utils/helpers';
 
-type Theme = 'dark' | 'light' | 'system';
-
 export default function Settings() {
+  const { user } = useAuth();
   const { toast } = useToast();
-  const [theme, setTheme] = useState<Theme>('dark');
+  const { theme, setTheme } = useTheme();
   const [notifications, setNotifications] = useState({ fraudAlerts: true, email: true, security: true });
   const [twoFA, setTwoFA] = useState(false);
   const [currentPwd, setCurrentPwd] = useState('');
   const [newPwd, setNewPwd] = useState('');
   const [confirmPwd, setConfirmPwd] = useState('');
+  const [isSavingPwd, setIsSavingPwd] = useState(false);
 
   const toggle = (key: keyof typeof notifications) => setNotifications(n => ({ ...n, [key]: !n[key] }));
 
-  const handlePwdSave = () => {
+  const handlePwdSave = async () => {
     if (!currentPwd || !newPwd || !confirmPwd) { toast('Please fill all password fields', 'error'); return; }
-    if (newPwd !== confirmPwd) { toast('Passwords do not match', 'error'); return; }
+    if (newPwd !== confirmPwd) { toast('New password and confirmation do not match', 'error'); return; }
     if (newPwd.length < 6) { toast('Password must be at least 6 characters', 'error'); return; }
-    setCurrentPwd(''); setNewPwd(''); setConfirmPwd('');
-    toast('Password updated successfully', 'success');
+
+    setIsSavingPwd(true);
+    try {
+      const res = await updatePassword(currentPwd, newPwd, confirmPwd);
+      toast(res.msg || 'Password updated successfully', 'success');
+      setCurrentPwd('');
+      setNewPwd('');
+      setConfirmPwd('');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { msg?: string } } })?.response?.data?.msg || 'Failed to update password';
+      toast(msg, 'error');
+    } finally {
+      setIsSavingPwd(false);
+    }
   };
 
   const themes: { value: Theme; label: string; icon: typeof Moon }[] = [
@@ -36,7 +51,7 @@ export default function Settings() {
   return (
     <DashboardLayout>
       <div className="max-w-4xl mx-auto space-y-6">
-        
+
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-text-primary tracking-tight">SETTINGS</h1>
           <p className="text-text-secondary mt-1">Manage your account preferences and security.</p>
@@ -46,8 +61,8 @@ export default function Settings() {
         <div className="card p-8">
           <h3 className="text-sm font-semibold text-text-primary uppercase tracking-wider flex items-center gap-2 mb-6 pb-2 border-b border-border"><User className="w-4 h-4 text-primary" /> Account</h3>
           <div className="grid sm:grid-cols-2 gap-6">
-            <Input label="Full Name" defaultValue="Sarah Chen" />
-            <Input label="Email" type="email" defaultValue="sarah.chen@shieldmail.com" />
+            <Input label="Full Name" defaultValue={user?.name || 'User'} readOnly />
+            <Input label="Email" type="email" defaultValue={user?.email || 'user@fraudshield.io'} readOnly />
           </div>
           <div className="flex justify-end mt-6"><Button size="sm" onClick={() => toast('Profile settings saved', 'success')}>Save Changes</Button></div>
         </div>
@@ -60,7 +75,11 @@ export default function Settings() {
             <Input label="New Password" type="password" value={newPwd} onChange={e => setNewPwd(e.target.value)} placeholder="••••••••" />
             <Input label="Confirm Password" type="password" value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)} placeholder="••••••••" />
           </div>
-          <div className="flex justify-end mt-6"><Button size="sm" onClick={handlePwdSave}>Update Password</Button></div>
+          <div className="flex justify-end mt-6">
+            <Button size="sm" onClick={handlePwdSave} disabled={isSavingPwd}>
+              {isSavingPwd ? 'Updating Password...' : 'Update Password'}
+            </Button>
+          </div>
         </div>
 
         {/* Notifications */}

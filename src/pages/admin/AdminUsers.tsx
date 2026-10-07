@@ -1,15 +1,16 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Search, Eye, UserCheck, UserX } from 'lucide-react';
 import { AdminLayout } from '@/components/layout/DashboardLayout';
 import Input from '@/components/common/Input';
 import Select from '@/components/common/Select';
 import Pagination from '@/components/common/Pagination';
 import Modal from '@/components/common/Modal';
-import Button from '@/components/common/Button';
 import { Badge } from '@/components/common/Badge';
+import { LoadingState, ErrorState } from '@/components/common/States';
 import { useToast } from '@/hooks/useToast';
-import { mockUsers } from '@/data/mockData';
-import type { User } from '@/types';
+import { useAuth } from '@/hooks/useAuth';
+import { getUsers, updateUserStatus } from '@/services/fraudService';
+import type { User, AccountStatus } from '@/types';
 
 const PER_PAGE = 10;
 const roleOptions = [{ value: 'all', label: 'All Roles' }, { value: 'Admin', label: 'Admin' }, { value: 'Analyst', label: 'Analyst' }, { value: 'User', label: 'User' }];
@@ -17,12 +18,35 @@ const statusOptions = [{ value: 'all', label: 'All Statuses' }, { value: 'Active
 
 export default function AdminUsers() {
   const { toast } = useToast();
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const { user: currentUser } = useAuth();
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [role, setRole] = useState('all');
   const [status, setStatus] = useState('all');
   const [page, setPage] = useState(1);
   const [viewUser, setViewUser] = useState<User | null>(null);
+
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getUsers();
+      setUsers(data);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { msg?: string } } })?.response?.data?.msg || 'Failed to load users from backend';
+      setError(msg);
+      toast(msg, 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const filtered = useMemo(() => {
     let result = [...users];
@@ -35,13 +59,27 @@ export default function AdminUsers() {
     return result;
   }, [users, search, role, status]);
 
-  const totalPages = Math.ceil(filtered.length / PER_PAGE);
+  const totalPages = Math.ceil(filtered.length / PER_PAGE) || 1;
   const paged = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
-  const toggleStatus = (id: string) => {
-    setUsers(us => us.map(u => u.id === id ? { ...u, status: u.status === 'Active' ? 'Suspended' : 'Active' } : u));
-    const u = users.find(x => x.id === id);
-    toast(`${u?.name} ${u?.status === 'Active' ? 'suspended' : 'activated'}`, u?.status === 'Active' ? 'warning' : 'success');
+  const toggleStatus = async (targetUser: User) => {
+    if (currentUser?.id === targetUser.id && targetUser.status === 'Active') {
+      toast('An admin cannot suspend their own account', 'error');
+      return;
+    }
+
+    const nextStatus: AccountStatus = targetUser.status === 'Active' ? 'Suspended' : 'Active';
+    setUpdatingId(targetUser.id);
+    try {
+      const updated = await updateUserStatus(targetUser.id, nextStatus);
+      setUsers(prev => prev.map(u => u.id === targetUser.id ? updated : u));
+      toast(`User ${updated.name} status updated to ${updated.status}`, updated.status === 'Active' ? 'success' : 'warning');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { msg?: string } } })?.response?.data?.msg || 'Failed to update user status';
+      toast(msg, 'error');
+    } finally {
+      setUpdatingId(null);
+    }
   };
 
   return (
@@ -57,7 +95,11 @@ export default function AdminUsers() {
         </div>
 
         <div className="card p-5">
-          {paged.length === 0 ? (
+          {loading ? (
+            <LoadingState message="Loading users from MongoDB..." />
+          ) : error ? (
+            <ErrorState message={error} onRetry={fetchUsers} />
+          ) : paged.length === 0 ? (
             <p className="text-center text-ink-400 py-12">No users found</p>
           ) : (
             <>
@@ -69,31 +111,42 @@ export default function AdminUsers() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-ink-700/50">
-                    {paged.map(u => (
-                      <tr key={u.id} className="hover:bg-ink-800/50 transition-colors">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent-400 to-accent-600 flex items-center justify-center text-ink-950 text-xs font-bold shrink-0">
-                              {u.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                    {paged.map(u => {
+                      const isSelf = currentUser?.id === u.id;
+                      const isUpdating = updatingId === u.id;
+                      return (
+                        <tr key={u.id} className="hover:bg-ink-800/50 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent-400 to-accent-600 flex items-center justify-center text-ink-950 text-xs font-bold shrink-0">
+                                {u.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                              </div>
+                              <span className="text-ink-100 font-medium">
+                                {u.name} {isSelf && <span className="text-[10px] text-accent-400 ml-1 font-mono">(You)</span>}
+                              </span>
                             </div>
-                            <span className="text-ink-100">{u.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-ink-300">{u.email}</td>
-                        <td className="px-4 py-3"><Badge variant={u.role === 'Admin' ? 'critical' : u.role === 'Analyst' ? 'info' : 'default'}>{u.role}</Badge></td>
-                        <td className="px-4 py-3 text-ink-200">{u.transactions}</td>
-                        <td className="px-4 py-3"><Badge variant={u.status === 'Active' ? 'success' : u.status === 'Suspended' ? 'danger' : 'warning'}>{u.status}</Badge></td>
-                        <td className="px-4 py-3 text-ink-300 whitespace-nowrap">{u.joinedDate}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1">
-                            <button onClick={() => setViewUser(u)} className="p-1.5 rounded-md text-accent-400 hover:bg-ink-800" title="View"><Eye className="w-4 h-4" /></button>
-                            <button onClick={() => toggleStatus(u.id)} className={`p-1.5 rounded-md hover:bg-ink-800 ${u.status === 'Active' ? 'text-danger-500' : 'text-success-500'}`} title={u.status === 'Active' ? 'Suspend' : 'Activate'}>
-                              {u.status === 'Active' ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="px-4 py-3 text-ink-300">{u.email}</td>
+                          <td className="px-4 py-3"><Badge variant={u.role === 'Admin' ? 'critical' : u.role === 'Analyst' ? 'info' : 'default'}>{u.role}</Badge></td>
+                          <td className="px-4 py-3 text-ink-200">{u.transactions}</td>
+                          <td className="px-4 py-3"><Badge variant={u.status === 'Active' ? 'success' : u.status === 'Suspended' ? 'danger' : 'warning'}>{u.status}</Badge></td>
+                          <td className="px-4 py-3 text-ink-300 whitespace-nowrap">{u.joinedDate}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1">
+                              <button onClick={() => setViewUser(u)} className="p-1.5 rounded-md text-accent-400 hover:bg-ink-800" title="View"><Eye className="w-4 h-4" /></button>
+                              <button
+                                onClick={() => toggleStatus(u)}
+                                disabled={isUpdating || (isSelf && u.status === 'Active')}
+                                className={`p-1.5 rounded-md hover:bg-ink-800 disabled:opacity-40 ${u.status === 'Active' ? 'text-danger-500' : 'text-success-500'}`}
+                                title={isSelf && u.status === 'Active' ? 'Cannot suspend own account' : u.status === 'Active' ? 'Suspend user' : 'Activate user'}
+                              >
+                                {u.status === 'Active' ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -135,3 +188,4 @@ export default function AdminUsers() {
     </AdminLayout>
   );
 }
+

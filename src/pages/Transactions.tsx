@@ -1,75 +1,96 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Search, Filter, Plus, Inbox } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { Search, Filter, Plus, Inbox, X } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import Input from '@/components/common/Input';
-import Select from '@/components/common/Select';
 import Button from '@/components/common/Button';
+import Select from '@/components/common/Select';
 import TransactionTable from '@/components/transactions/TransactionTable';
 import Pagination from '@/components/common/Pagination';
 import { LoadingState, NoResultsState } from '@/components/common/States';
-import { getTransactions } from '@/services/fraudService';
-import type { Transaction, Prediction } from '@/types';
+import { getPaginatedTransactions } from '@/services/fraudService';
+import type { Transaction } from '@/types';
 
 const PER_PAGE = 10;
-const predictionOptions = [
+
+const filterOptions = [
   { value: 'all', label: 'All Predictions' },
-  { value: 'Genuine', label: 'Genuine' },
-  { value: 'Suspicious', label: 'Suspicious' },
-  { value: 'Fraud', label: 'Fraud' },
-];
-const riskOptions = [
-  { value: 'all', label: 'All Risk Levels' },
-  { value: 'Low', label: 'Low Risk' },
-  { value: 'Medium', label: 'Medium Risk' },
-  { value: 'High', label: 'High Risk' },
-  { value: 'Critical', label: 'Critical Risk' },
-];
-const sortOptions = [
-  { value: 'date-desc', label: 'Newest First' },
-  { value: 'date-asc', label: 'Oldest First' },
-  { value: 'amount-desc', label: 'Amount: High to Low' },
-  { value: 'amount-asc', label: 'Amount: Low to High' },
-  { value: 'risk-desc', label: 'Risk: High to Low' },
-  { value: 'risk-asc', label: 'Risk: Low to High' },
+  { value: 'genuine', label: 'Genuine Only' },
+  { value: 'suspicious', label: 'Suspicious Only' },
+  { value: 'fraud', label: 'Fraud Only' },
 ];
 
 export default function Transactions() {
-  const [all, setAll] = useState<Transaction[]>([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchParam = searchParams.get('search') || '';
+  const filterParam = searchParams.get('filter') || 'all';
+
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [prediction, setPrediction] = useState('all');
-  const [risk, setRisk] = useState('all');
-  const [sort, setSort] = useState('date-desc');
+  const [search, setSearch] = useState(searchParam);
+  const [filter, setFilter] = useState(filterParam);
   const [page, setPage] = useState(1);
+  const [hasAnyTransactions, setHasAnyTransactions] = useState(true);
+
+  // Sync state when URL searchParams change
+  useEffect(() => {
+    const s = searchParams.get('search') || '';
+    const f = searchParams.get('filter') || 'all';
+    setSearch(s);
+    setFilter(f);
+    setPage(1);
+  }, [searchParams]);
+
+  const fetchTxns = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getPaginatedTransactions(page, PER_PAGE, search, filter);
+      setTransactions(data.transactions);
+      setTotal(data.total);
+      setTotalPages(data.totalPages);
+      if (page === 1 && !search && filter === 'all' && data.total === 0) {
+         setHasAnyTransactions(false);
+      } else {
+         setHasAnyTransactions(true);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, search, filter]);
 
   useEffect(() => {
-    getTransactions().then(t => { setAll(t); setLoading(false); });
-  }, []);
+    fetchTxns();
+  }, [fetchTxns]);
 
-  const filtered = useMemo(() => {
-    let result = [...all];
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(t => t.id.toLowerCase().includes(q) || t.location.toLowerCase().includes(q) || t.type.toLowerCase().includes(q));
-    }
-    if (prediction !== 'all') result = result.filter(t => t.prediction === (prediction as Prediction));
-    if (risk !== 'all') result = result.filter(t => t.riskLevel === risk);
-    switch (sort) {
-      case 'date-asc': result.sort((a, b) => a.date.localeCompare(b.date)); break;
-      case 'amount-desc': result.sort((a, b) => b.amount - a.amount); break;
-      case 'amount-asc': result.sort((a, b) => a.amount - b.amount); break;
-      case 'risk-desc': result.sort((a, b) => b.riskScore - a.riskScore); break;
-      case 'risk-asc': result.sort((a, b) => a.riskScore - b.riskScore); break;
-      default: result.sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time));
-    }
-    return result;
-  }, [all, search, prediction, risk, sort]);
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setSearch(val);
+    setPage(1);
+    const newParams: Record<string, string> = {};
+    if (val) newParams.search = val;
+    if (filter && filter !== 'all') newParams.filter = filter;
+    setSearchParams(newParams);
+  };
 
-  const totalPages = Math.ceil(filtered.length / PER_PAGE);
-  const paged = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const handleFilterChange = (val: string) => {
+    setFilter(val);
+    setPage(1);
+    const newParams: Record<string, string> = {};
+    if (search) newParams.search = search;
+    if (val && val !== 'all') newParams.filter = val;
+    setSearchParams(newParams);
+  };
 
-  useEffect(() => { setPage(1); }, [search, prediction, risk, sort]);
+  const clearFilters = () => {
+    setSearch('');
+    setFilter('all');
+    setPage(1);
+    setSearchParams({});
+  };
 
   return (
     <DashboardLayout>
@@ -80,7 +101,7 @@ export default function Transactions() {
             <h1 className="text-2xl lg:text-3xl font-bold text-text-primary tracking-tight">TRANSACTIONS</h1>
             <p className="text-text-secondary mt-1">Search, filter, and review all processed transactions.</p>
           </div>
-          {all.length > 0 && (
+          {hasAnyTransactions && (
             <Link to="/detect">
               <Button><Plus className="w-4 h-4" /> Create Transaction</Button>
             </Link>
@@ -89,7 +110,7 @@ export default function Transactions() {
 
         {loading ? (
           <div className="card"><LoadingState message="Loading transactions..." /></div>
-        ) : all.length === 0 ? (
+        ) : !hasAnyTransactions ? (
           <div className="card flex flex-col items-center justify-center py-20 text-center">
             <div className="w-16 h-16 rounded-full bg-surface border border-border flex items-center justify-center mb-6 text-text-secondary">
               <Inbox className="w-8 h-8" />
@@ -106,26 +127,37 @@ export default function Transactions() {
           <>
             {/* Filters */}
             <div className="card p-6 border-l-4 border-l-primary">
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                <Input label="Search" name="search" placeholder="ID, location, type..." icon={<Search className="w-4 h-4" />} value={search} onChange={e => setSearch(e.target.value)} />
-                <Select label="Prediction" options={predictionOptions} value={prediction} onChange={e => setPrediction(e.target.value)} />
-                <Select label="Risk Level" options={riskOptions} value={risk} onChange={e => setRisk(e.target.value)} />
-                <Select label="Sort By" options={sortOptions} value={sort} onChange={e => setSort(e.target.value)} />
+              <div className="grid sm:grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div className="md:col-span-2">
+                  <Input label="Search" name="search" placeholder="Search by Transaction ID or Location..." icon={<Search className="w-4 h-4" />} value={search} onChange={handleSearchChange} />
+                </div>
+                <div>
+                  <Select label="Filter Prediction" options={filterOptions} value={filter} onChange={e => handleFilterChange(e.target.value)} />
+                </div>
               </div>
-              <div className="flex items-center gap-2 mt-4 text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                <Filter className="w-3.5 h-3.5 text-primary" />
-                Showing {filtered.length} of {all.length} transactions
+              <div className="flex items-center justify-between mt-4 text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-3.5 h-3.5 text-primary" />
+                  Showing {transactions.length} of {total} transactions {filter !== 'all' && <span className="text-primary font-bold">({filter.toUpperCase()})</span>}
+                </div>
+                {(search || filter !== 'all') && (
+                  <button onClick={clearFilters} className="text-text-secondary hover:text-danger flex items-center gap-1 normal-case text-xs transition-colors">
+                    <X className="w-3.5 h-3.5" /> Clear filters
+                  </button>
+                )}
               </div>
             </div>
 
             {/* Table */}
             <div className="card overflow-hidden">
-              {paged.length === 0 ? <NoResultsState /> : (
+              {transactions.length === 0 ? <NoResultsState /> : (
                 <>
-                  <TransactionTable transactions={paged} />
-                  <div className="p-4 border-t border-border bg-background/50">
-                    <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
-                  </div>
+                  <TransactionTable transactions={transactions} />
+                  {totalPages > 1 && (
+                    <div className="p-4 border-t border-border bg-background/50">
+                      <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+                    </div>
+                  )}
                 </>
               )}
             </div>

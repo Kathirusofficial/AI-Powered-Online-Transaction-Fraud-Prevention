@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { classNames, predictionColors, riskColors } from '@/utils/helpers';
+import { classNames } from '@/utils/helpers';
 import type { Prediction, RiskLevel } from '@/types';
 
 interface BadgeProps {

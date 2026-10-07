@@ -33,7 +33,19 @@ def resolve_dataset_path(filename: str) -> Path:
 TRAIN_DATA_PATH = resolve_dataset_path("fraudTrain.csv")
 TEST_DATA_PATH = resolve_dataset_path("fraudTest.csv")
 
-MODEL_PATH = MODEL_DIR / "xgboost_fraud_v1.joblib"
+def resolve_model_path():
+    p1 = MODEL_DIR / "xgboost_fraud_v1.joblib"
+    if p1.exists():
+        return p1
+    p2 = BASE_DIR / "model.pkl"
+    if p2.exists():
+        return p2
+    p3 = Path(__file__).resolve().parent.parent / "python" / "model.pkl"
+    if p3.exists():
+        return p3
+    return p1
+
+MODEL_PATH = resolve_model_path()
 PIPELINE_PATH = MODEL_DIR / "feature_pipeline.joblib"
 METADATA_PATH = MODEL_DIR / "feature_metadata.json"
 

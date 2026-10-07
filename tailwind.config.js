@@ -1,19 +1,41 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        background: '#080A0F',
-        surface: '#10141B',
-        border: '#202630',
-        primary: '#00C7E8',
-        success: '#22C55E',
-        warning: '#F59E0B',
-        danger: '#EF4444',
+        background: 'rgb(var(--color-background) / <alpha-value>)',
+        surface: 'rgb(var(--color-surface) / <alpha-value>)',
+        border: 'rgb(var(--color-border) / <alpha-value>)',
+        primary: 'rgb(var(--color-primary) / <alpha-value>)',
+        success: 'rgb(var(--color-success) / <alpha-value>)',
+        warning: 'rgb(var(--color-warning) / <alpha-value>)',
+        danger: 'rgb(var(--color-danger) / <alpha-value>)',
         text: {
-          primary: '#F5F7FA',
-          secondary: '#8B95A5'
+          primary: 'rgb(var(--color-text-primary) / <alpha-value>)',
+          secondary: 'rgb(var(--color-text-secondary) / <alpha-value>)',
+          muted: 'rgb(var(--color-text-muted) / <alpha-value>)',
+        },
+        ink: {
+          50: 'rgb(var(--color-text-primary) / <alpha-value>)',
+          100: 'rgb(var(--color-text-primary) / <alpha-value>)',
+          200: 'rgb(var(--color-text-primary) / <alpha-value>)',
+          300: 'rgb(var(--color-text-secondary) / <alpha-value>)',
+          400: 'rgb(var(--color-text-secondary) / <alpha-value>)',
+          700: 'rgb(var(--color-border) / <alpha-value>)',
+          800: 'rgb(var(--color-surface) / <alpha-value>)',
+          850: 'rgb(var(--color-surface) / <alpha-value>)',
+          900: 'rgb(var(--color-background) / <alpha-value>)',
+          950: 'rgb(var(--color-background) / <alpha-value>)',
+        },
+        accent: {
+          400: 'rgb(var(--color-primary) / <alpha-value>)',
+          500: 'rgb(var(--color-primary) / <alpha-value>)',
+        },
+        critical: {
+          400: 'rgb(var(--color-danger) / <alpha-value>)',
+          500: 'rgb(var(--color-danger) / <alpha-value>)',
         }
       },
       fontFamily: {

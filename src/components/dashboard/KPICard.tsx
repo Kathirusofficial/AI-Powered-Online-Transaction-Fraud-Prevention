@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { classNames } from '@/utils/helpers';
 
 interface KPICardProps {
@@ -7,9 +8,11 @@ interface KPICardProps {
   icon: ReactNode;
   accent?: 'primary' | 'success' | 'warning' | 'danger' | 'accent' | 'critical';
   trend?: number;
+  to?: string;
+  onClick?: () => void;
 }
 
-export default function KPICard({ label, value, icon, accent = 'primary', trend }: KPICardProps) {
+export default function KPICard({ label, value, icon, accent = 'primary', trend, to, onClick }: KPICardProps) {
   const accents: Record<string, string> = {
     primary: 'text-primary',
     success: 'text-success',
@@ -19,8 +22,8 @@ export default function KPICard({ label, value, icon, accent = 'primary', trend 
     critical: 'text-danger',
   };
 
-  return (
-    <div className="card card-hover p-5 animate-fade-in-up">
+  const content = (
+    <>
       <div className="flex items-start justify-between mb-4">
         <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">{label}</p>
         <div className={classNames('shrink-0', accents[accent] || accents.primary)}>
@@ -35,6 +38,30 @@ export default function KPICard({ label, value, icon, accent = 'primary', trend 
           </span>
         )}
       </div>
+    </>
+  );
+
+  if (to) {
+    return (
+      <Link
+        to={to}
+        onClick={onClick}
+        className="card card-hover p-5 animate-fade-in-up block cursor-pointer transition-transform hover:-translate-y-0.5"
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <div
+      onClick={onClick}
+      className={classNames(
+        'card card-hover p-5 animate-fade-in-up',
+        onClick && 'cursor-pointer transition-transform hover:-translate-y-0.5'
+      )}
+    >
+      {content}
     </div>
   );
 }

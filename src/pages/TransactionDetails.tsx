@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, MapPin, Calendar, Clock, Smartphone, DollarSign, Activity, AlertCircle, ShieldCheck } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { PredictionBadge, RiskBadge, Badge } from '@/components/common/Badge';
+import { PredictionBadge, RiskBadge } from '@/components/common/Badge';
 import RiskGauge from '@/components/common/RiskGauge';
 import { LoadingState, ErrorState } from '@/components/common/States';
 import { getTransactionById } from '@/services/fraudService';
@@ -55,6 +55,9 @@ export default function TransactionDetails() {
                 { label: 'Date', value: txn.date, icon: Calendar },
                 { label: 'Time', value: txn.time, icon: Clock },
                 { label: 'Location', value: txn.location, icon: MapPin },
+                ...(txn.latitude && txn.longitude ? [
+                  { label: 'GPS Coordinates', value: `${txn.latitude}, ${txn.longitude}`, icon: MapPin }
+                ] : []),
                 { label: 'Device', value: txn.deviceType, icon: Smartphone },
               ].map(f => {
                 const Icon = f.icon;
@@ -100,7 +103,7 @@ export default function TransactionDetails() {
               { label: 'Transaction Frequency', value: `${txn.transactionFrequency}/day` },
               { label: 'Previous Amount', value: formatCurrency(txn.previousTransactionAmount) },
               { label: 'Account Age', value: `${txn.accountAge} days` },
-              { label: 'Location Distance', value: `${txn.distanceFromPrevious} km` },
+              { label: 'Location Distance', value: `${(txn.distanceFromPreviousKm !== undefined ? txn.distanceFromPreviousKm : txn.distanceFromPrevious).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} km` },
               { label: 'IP Risk Score', value: `${txn.ipRiskScore}/100` },
             ].map(f => (
               <div key={f.label} className="bg-ink-850 rounded-lg p-4">
@@ -116,12 +119,22 @@ export default function TransactionDetails() {
           <div className="card p-6">
             <h3 className="text-sm font-semibold text-ink-100 mb-4 flex items-center gap-2"><span className="w-1 h-4 bg-critical-500 rounded-full" /> Risk Factors</h3>
             <div className="space-y-2.5">
-              {txn.riskFactors.map((f, i) => (
-                <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-ink-850 border border-ink-700/50">
-                  {txn.riskLevel === 'Low' ? <ShieldCheck className="w-5 h-5 text-success-500 shrink-0 mt-0.5" /> : <AlertCircle className="w-5 h-5 text-warning-500 shrink-0 mt-0.5" />}
-                  <p className="text-sm text-ink-200">{f}</p>
-                </div>
-              ))}
+              {txn.riskFactors.map((f, i) => {
+                const isRisk = /high|large|elevated|deviation|unusual|incident|variance|higher/i.test(f) || (txn.riskScore >= 60);
+                const isModerate = /noticeable|moderate|verification|off-peak/i.test(f);
+                return (
+                  <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-ink-850 border border-ink-700/50">
+                    {isRisk ? (
+                      <AlertCircle className="w-5 h-5 text-critical-500 shrink-0 mt-0.5" />
+                    ) : isModerate ? (
+                      <AlertCircle className="w-5 h-5 text-warning-500 shrink-0 mt-0.5" />
+                    ) : (
+                      <ShieldCheck className="w-5 h-5 text-success-500 shrink-0 mt-0.5" />
+                    )}
+                    <p className="text-sm text-ink-200 leading-relaxed">{f}</p>
+                  </div>
+                );
+              })}
             </div>
           </div>
 

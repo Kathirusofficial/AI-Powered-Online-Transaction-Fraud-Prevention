@@ -11,7 +11,7 @@ export interface FeatureImportanceItem {
   feature: string;
   label: string;
   importance: number;
-  value?: any;
+  value?: unknown;
 }
 
 export interface ModelExplanation {
@@ -29,6 +29,12 @@ export interface Transaction {
   merchantCategory: MerchantCategory;
   merchantUrl?: string;
   location: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  accuracy?: number | null;
+  previousLatitude?: number | null;
+  previousLongitude?: number | null;
+  distanceFromPreviousKm?: number;
   date: string;
   time: string;
   riskScore: number;
@@ -95,6 +101,8 @@ export interface AdminStats {
 }
 
 export interface AnalyzeResult {
+  id?: string;
+  transactionId?: string;
   riskLevel: RiskLevel;
   prediction: Prediction;
   fraudProbability: number;
@@ -102,4 +110,11 @@ export interface AnalyzeResult {
   riskFactors: string[];
   modelVersion?: string;
   explanation?: ModelExplanation;
+  latitude?: number | null;
+  longitude?: number | null;
+  accuracy?: number | null;
+  previousLatitude?: number | null;
+  previousLongitude?: number | null;
+  distanceFromPreviousKm?: number;
+  location?: string;
 }
