@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { Transaction } from '@/types';
 import { PredictionBadge } from '@/components/common/Badge';
-import { formatCurrency } from '@/utils/helpers';
+import { formatCurrency, formatLocation } from '@/utils/helpers';
 import { Eye } from 'lucide-react';
 
 interface TransactionTableProps {
@@ -32,7 +32,7 @@ export default function TransactionTable({ transactions, showUser = false, showS
           <tr className="text-left text-xs text-text-secondary uppercase tracking-wider border-b border-border">
             <th className="px-4 py-4 font-semibold">Transaction ID</th>
             {showUser && <th className="px-4 py-4 font-semibold">User</th>}
-            <th className="px-4 py-4 font-semibold">Amount</th>
+            <th className="px-4 py-4 font-semibold">Amount (₹)</th>
             <th className="px-4 py-4 font-semibold">Type</th>
             <th className="px-4 py-4 font-semibold">Location</th>
             <th className="px-4 py-4 font-semibold">Risk Score</th>
@@ -49,7 +49,7 @@ export default function TransactionTable({ transactions, showUser = false, showS
               {showUser && <td className="px-4 py-4 text-text-primary font-medium">{t.userName}</td>}
               <td className="px-4 py-4 font-medium text-text-primary">{formatCurrency(t.amount)}</td>
               <td className="px-4 py-4 text-text-secondary">{t.type}</td>
-              <td className="px-4 py-4 text-text-secondary">{t.location}</td>
+              <td className="px-4 py-4 text-text-secondary">{formatLocation(t.location)}</td>
               <td className="px-4 py-4">
                 <div className="flex items-center gap-3">
                   <span className={`font-semibold ${t.riskScore >= 75 ? 'text-danger' : t.riskScore >= 50 ? 'text-warning' : 'text-success'}`}>

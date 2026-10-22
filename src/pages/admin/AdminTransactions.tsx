@@ -12,7 +12,7 @@ import { LoadingState, NoResultsState } from '@/components/common/States';
 import { getTransactions } from '@/services/fraudService';
 import { useToast } from '@/hooks/useToast';
 import type { Transaction } from '@/types';
-import { formatCurrency } from '@/utils/helpers';
+import { formatCurrency, formatLocation } from '@/utils/helpers';
 
 const PER_PAGE = 10;
 const predictionOptions = [{ value: 'all', label: 'All Predictions' }, { value: 'Genuine', label: 'Genuine' }, { value: 'Suspicious', label: 'Suspicious' }, { value: 'Fraud', label: 'Fraud' }];
@@ -76,7 +76,7 @@ export default function AdminTransactions() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-left text-ink-400 border-b border-ink-700">
-                        {['Transaction ID', 'User', 'Amount', 'Type', 'Location', 'Risk Score', 'Prediction', 'Date', 'Status', 'Actions'].map(h => <th key={h} className="px-4 py-3 font-medium">{h}</th>)}
+                        {['Transaction ID', 'User', 'Amount (₹)', 'Type', 'Location', 'Risk Score', 'Prediction', 'Date', 'Status', 'Actions'].map(h => <th key={h} className="px-4 py-3 font-medium">{h}</th>)}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-ink-700/50">
@@ -86,7 +86,7 @@ export default function AdminTransactions() {
                           <td className="px-4 py-3 text-ink-200">{t.userName}</td>
                           <td className="px-4 py-3 font-medium text-ink-100">{formatCurrency(t.amount)}</td>
                           <td className="px-4 py-3 text-ink-300">{t.type}</td>
-                          <td className="px-4 py-3 text-ink-300">{t.location}</td>
+                          <td className="px-4 py-3 text-ink-300">{formatLocation(t.location)}</td>
                           <td className="px-4 py-3"><span className={t.riskScore >= 60 ? 'text-critical-400' : t.riskScore >= 30 ? 'text-warning-500' : 'text-success-500'}>{t.riskScore}</span></td>
                           <td className="px-4 py-3"><PredictionBadge prediction={t.prediction} /></td>
                           <td className="px-4 py-3 text-ink-300 whitespace-nowrap">{t.date}</td>

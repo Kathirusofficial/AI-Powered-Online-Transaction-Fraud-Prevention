@@ -134,9 +134,9 @@ export default function Settings() {
             <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-4 flex items-center gap-2"><LogIn className="w-4 h-4" /> Login Activity</p>
             <div className="space-y-3">
               {[
-                { device: 'Chrome on macOS', location: 'New York, US', time: 'Active now', current: true },
-                { device: 'Safari on iPhone', location: 'New York, US', time: '2 hours ago', current: false },
-                { device: 'Firefox on Windows', location: 'Boston, US', time: '3 days ago', current: false },
+                { device: 'Chrome on Windows', location: 'India (Active Session)', time: 'Active now', current: true },
+                { device: 'Safari on Mobile', location: 'India (Verified Device)', time: '2 hours ago', current: false },
+                { device: 'Edge on Windows', location: 'India (Previous Session)', time: '3 days ago', current: false },
               ].map((s, i) => (
                 <div key={i} className="flex items-center justify-between p-4 rounded-lg bg-background border border-border/50">
                   <div><p className="text-sm font-medium text-text-primary">{s.device}</p><p className="text-xs text-text-secondary mt-0.5">{s.location}</p></div>

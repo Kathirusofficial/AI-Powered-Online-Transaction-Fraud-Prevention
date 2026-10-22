@@ -21,10 +21,23 @@ import { useToast } from '@/hooks/useToast';
 import { useAuth } from '@/hooks/useAuth';
 import { analyzeTransaction, getLastLocation, type AnalyzeInput } from '@/services/fraudService';
 import type { AnalyzeResult } from '@/types';
-import { riskColors } from '@/utils/helpers';
+import { riskColors, formatLocation, reverseGeocodeCoordinates, formatCurrencyINR } from '@/utils/helpers';
 
 const typeOptions = ['Payment', 'Transfer', 'Withdrawal', 'Deposit', 'Purchase'].map(v => ({ value: v, label: v }));
-const merchantOptions = ['Retail', 'Food & Dining', 'Travel', 'Entertainment', 'Electronics', 'Groceries', 'Healthcare', 'Gas', 'Online', 'Other'].map(v => ({ value: v, label: v }));
+const merchantOptions = [
+  'Retail',
+  'Fuel',
+  'Food & Dining',
+  'Travel',
+  'Entertainment',
+  'Electronics',
+  'Groceries',
+  'Healthcare',
+  'Online Shopping',
+  'Utilities',
+  'Education',
+  'Other'
+].map(v => ({ value: v, label: v }));
 const deviceOptions = ['Mobile', 'Desktop', 'Tablet', 'Unknown'].map(v => ({ value: v, label: v }));
 
 const today = new Date().toISOString().split('T')[0];
@@ -48,7 +61,7 @@ export default function Detect() {
     date: today,
     time: '12:00',
     accountAge: 365,
-    previousTransactionAmount: 500,
+    previousTransactionAmount: 5000,
     transactionFrequency: 5,
     previousFraudCount: 0,
     distanceFromPrevious: 0,
@@ -89,7 +102,7 @@ export default function Detect() {
           hasPrevious: true,
           latitude: res.location.latitude,
           longitude: res.location.longitude,
-          displayName: res.location.displayName || `Lat: ${res.location.latitude.toFixed(4)}, Lon: ${res.location.longitude.toFixed(4)}`,
+          displayName: formatLocation(res.location.displayName) || 'Previous location',
           accuracy: res.location.accuracy || null,
           date: res.location.date,
           time: res.location.time,
@@ -101,7 +114,7 @@ export default function Detect() {
 
   const set = (k: keyof AnalyzeInput, v: string | number | null) => setForm(f => ({ ...f, [k]: v }));
 
-  // Request browser geolocation
+  // Request real browser geolocation and derive human-readable Indian location
   const handleGetCurrentLocation = () => {
     if (!('geolocation' in navigator)) {
       const msg = 'Geolocation is not supported by your browser.';
@@ -120,26 +133,15 @@ export default function Detect() {
         const lon = Number(position.coords.longitude.toFixed(6));
         const acc = Math.round(position.coords.accuracy);
 
-        let locationName = `Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}`;
-
-        // Optional reverse geocoding attempt with timeout fallback
+        // Derive authentic Indian human-readable location via reverse geocoding
+        let locationName = 'Location unavailable';
         try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=12`,
-            { signal: AbortSignal.timeout(3000) }
-          );
-          if (res.ok) {
-            const data = await res.json();
-            const city = data.address?.city || data.address?.town || data.address?.village || data.address?.county || data.address?.state;
-            const country = data.address?.country;
-            if (city && country) {
-              locationName = `${city}, ${country}`;
-            } else if (data.display_name) {
-              locationName = data.display_name.split(',').slice(0, 3).join(',');
-            }
+          const geoData = await reverseGeocodeCoordinates(lat, lon);
+          if (geoData && geoData.locationName && geoData.locationName !== 'Location unavailable') {
+            locationName = geoData.locationName;
           }
         } catch (err) {
-          console.warn('Reverse geocoding unavailable:', err);
+          console.warn('Reverse geocoding error:', err);
         }
 
         // Preview distance if user has a previous transaction
@@ -173,15 +175,22 @@ export default function Detect() {
       (error) => {
         let msg = 'Unable to detect your location.';
         if (error.code === 1) {
-          msg = 'Location permission denied. You can continue analysis without location.';
+          msg = 'Location permission required. Please allow access or specify location.';
         } else if (error.code === 2) {
-          msg = 'Unable to detect your location.';
+          msg = 'Location unavailable. Network/satellite positioning failed.';
         } else if (error.code === 3) {
           msg = 'Location request timed out. Please try again.';
         }
 
         setGeoStatus('error');
         setGeoErrorMsg(msg);
+        setForm(f => ({
+          ...f,
+          location: f.location || 'Location unavailable',
+          latitude: null,
+          longitude: null,
+          accuracy: null
+        }));
         toast(msg, 'warning');
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -191,7 +200,7 @@ export default function Detect() {
   const validate = () => {
     const e: Record<string, string> = {};
     if (!form.amount || form.amount <= 0) e.amount = 'Amount required';
-    if (!form.location) e.location = 'Location or coordinates required';
+    if (!form.location) e.location = 'Location required';
     if (!form.date) e.date = 'Date required';
     if (!form.time) e.time = 'Time required';
     setErrors(e);
@@ -207,6 +216,7 @@ export default function Detect() {
     try {
       const res = await analyzeTransaction({
         ...form,
+        locationSource: (form.latitude !== null && geoStatus === 'success') ? 'REAL_GPS' : 'MANUAL_ENTRY',
         userId: user?.email ? `U_${user.email}` : 'U0001',
         userName: user?.name || 'Current User',
       });
@@ -290,7 +300,7 @@ export default function Detect() {
               <section>
                 <h2 className="text-sm font-semibold text-text-primary tracking-wider mb-6 border-b border-border pb-2">TRANSACTION DETAILS</h2>
                 <div className="grid sm:grid-cols-2 gap-x-6 gap-y-5">
-                  <Input label="Amount ($)" type="number" name="amount" placeholder="0.00" value={form.amount || ''} onChange={e => set('amount', parseFloat(e.target.value) || 0)} error={errors.amount} />
+                  <Input label="Amount (₹)" type="number" name="amount" placeholder="e.g. 15,000" value={form.amount || ''} onChange={e => set('amount', parseFloat(e.target.value) || 0)} error={errors.amount} />
                   <Select label="Transaction Type" name="type" options={typeOptions} value={form.type} onChange={e => set('type', e.target.value)} />
                   <Select label="Merchant Category" name="merchantCategory" options={merchantOptions} value={form.merchantCategory} onChange={e => set('merchantCategory', e.target.value)} />
                   <Input label="Merchant URL (Optional)" type="url" name="merchantUrl" placeholder="https://..." value={form.merchantUrl || ''} onChange={e => set('merchantUrl', e.target.value)} />
@@ -400,7 +410,7 @@ export default function Detect() {
                 <h2 className="text-sm font-semibold text-text-primary tracking-wider mb-6 border-b border-border pb-2">USER BEHAVIOR & METRICS</h2>
                 <div className="grid sm:grid-cols-2 gap-x-6 gap-y-5">
                   <Input label="Account Age (days)" type="number" value={form.accountAge} onChange={e => set('accountAge', parseInt(e.target.value) || 0)} />
-                  <Input label="Previous Txn Amount ($)" type="number" value={form.previousTransactionAmount} onChange={e => set('previousTransactionAmount', parseFloat(e.target.value) || 0)} />
+                  <Input label="Previous Txn Amount (₹)" type="number" placeholder="e.g. 5,000" value={form.previousTransactionAmount} onChange={e => set('previousTransactionAmount', parseFloat(e.target.value) || 0)} />
                   <Input label="Txn Frequency (per day)" type="number" value={form.transactionFrequency} onChange={e => set('transactionFrequency', parseInt(e.target.value) || 0)} />
                   <Input label="Previous Fraud Count" type="number" value={form.previousFraudCount} onChange={e => set('previousFraudCount', parseInt(e.target.value) || 0)} />
                   <Input 
@@ -510,21 +520,26 @@ export default function Detect() {
                       </div>
 
                       <div className="text-xs text-text-secondary space-y-1">
-                        <div className="flex justify-between">
+                        <div className="flex justify-between items-center">
                           <span>Transaction Location:</span>
-                          <span className="text-text-primary font-medium">{result.location || form.location}</span>
+                          <span className="text-text-primary font-medium">{formatLocation(result.location || form.location)}</span>
                         </div>
-                        {result.latitude && result.longitude && (
-                          <div className="flex justify-between">
-                            <span>Current GPS:</span>
-                            <span className="font-mono text-text-primary">{result.latitude}, {result.longitude}</span>
-                          </div>
-                        )}
-                        {result.previousLatitude && result.previousLongitude && (
-                          <div className="flex justify-between">
-                            <span>Previous GPS:</span>
-                            <span className="font-mono text-text-primary">{result.previousLatitude}, {result.previousLongitude}</span>
-                          </div>
+                        {result.latitude !== null && result.latitude !== undefined && result.longitude !== null && result.longitude !== undefined && (
+                          <details className="pt-1 mt-1 border-t border-border/50 text-[11px] text-text-muted cursor-pointer">
+                            <summary className="hover:text-text-primary font-medium text-xs">View Detailed GPS Telemetry</summary>
+                            <div className="mt-1.5 space-y-1 font-mono text-[10px] pl-2 border-l border-border/60">
+                              <div className="flex justify-between">
+                                <span>Current GPS:</span>
+                                <span className="text-text-primary">{result.latitude}, {result.longitude}</span>
+                              </div>
+                              {result.previousLatitude !== null && result.previousLatitude !== undefined && (
+                                <div className="flex justify-between">
+                                  <span>Previous GPS:</span>
+                                  <span className="text-text-primary">{result.previousLatitude}, {result.previousLongitude}</span>
+                                </div>
+                              )}
+                            </div>
+                          </details>
                         )}
                       </div>
                     </div>

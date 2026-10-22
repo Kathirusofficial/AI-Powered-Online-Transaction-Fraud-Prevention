@@ -20,7 +20,7 @@ export default function TransactionActivityChart() {
       const d = new Date(now);
       d.setDate(d.getDate() - i);
       const dateStr = d.toISOString().split('T')[0];
-      const displayDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const displayDate = d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
 
       const dayTxns = transactions.filter(t => t.date === dateStr);
       const total = dayTxns.length;

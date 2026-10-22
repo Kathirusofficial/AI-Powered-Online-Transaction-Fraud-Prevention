@@ -1,7 +1,7 @@
 export type Prediction = 'Genuine' | 'Suspicious' | 'Fraud';
 export type RiskLevel = 'Low' | 'Medium' | 'High' | 'Critical';
 export type TransactionType = 'Payment' | 'Transfer' | 'Withdrawal' | 'Deposit' | 'Purchase';
-export type MerchantCategory = 'Retail' | 'Food & Dining' | 'Travel' | 'Entertainment' | 'Electronics' | 'Groceries' | 'Healthcare' | 'Gas' | 'Online' | 'Other';
+export type MerchantCategory = 'Retail' | 'Food & Dining' | 'Travel' | 'Entertainment' | 'Electronics' | 'Groceries' | 'Healthcare' | 'Gas' | 'Fuel' | 'Online' | 'Online Shopping' | 'Utilities' | 'Education' | 'Other';
 export type DeviceType = 'Mobile' | 'Desktop' | 'Tablet' | 'Unknown';
 export type AlertSeverity = 'Critical' | 'High' | 'Medium' | 'Low';
 export type UserRole = 'Admin' | 'Analyst' | 'User';
@@ -25,10 +25,14 @@ export interface Transaction {
   userId: string;
   userName: string;
   amount: number;
+  currency?: string;
+  amountInr?: number;
+  modelAmountUsd?: number;
   type: TransactionType;
   merchantCategory: MerchantCategory;
   merchantUrl?: string;
   location: string;
+  locationSource?: 'REAL_GPS' | 'SCENARIO_PROFILE' | 'MANUAL_ENTRY' | 'UNKNOWN';
   latitude?: number | null;
   longitude?: number | null;
   accuracy?: number | null;
@@ -117,4 +121,5 @@ export interface AnalyzeResult {
   previousLongitude?: number | null;
   distanceFromPreviousKm?: number;
   location?: string;
+  locationSource?: 'REAL_GPS' | 'SCENARIO_PROFILE' | 'MANUAL_ENTRY' | 'UNKNOWN';
 }

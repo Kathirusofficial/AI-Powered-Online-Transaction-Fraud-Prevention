@@ -8,6 +8,8 @@ import { reports as staticReports } from '@/data/mockData';
 import { getTransactions } from '@/services/fraudService';
 import type { Transaction } from '@/types';
 
+import { formatLocation } from '@/utils/helpers';
+
 function escapeCSVCell(val: unknown): string {
   if (val === null || val === undefined) return '""';
   const str = String(val).replace(/"/g, '""');
@@ -15,14 +17,15 @@ function escapeCSVCell(val: unknown): string {
 }
 
 function exportCSV(transactions: Transaction[], filename: string) {
-  const headers = ['Transaction ID', 'User', 'Amount', 'Type', 'Merchant Category', 'Location', 'Date', 'Time', 'Risk Score', 'Fraud Probability', 'Prediction', 'Risk Level', 'Status'];
+  const headers = ['Transaction ID', 'User', 'Amount (INR)', 'Currency', 'Type', 'Merchant Category', 'Location', 'Date', 'Time', 'Risk Score', 'Fraud Probability', 'Prediction', 'Risk Level', 'Status'];
   const rows = transactions.map(t => [
     t.id,
     t.userName || 'N/A',
     t.amount,
+    t.currency || 'INR',
     t.type,
     t.merchantCategory,
-    t.location,
+    formatLocation(t.location),
     t.date,
     t.time,
     t.riskScore,
@@ -118,7 +121,7 @@ export default function Reports() {
                 <p className="text-sm text-ink-400 mt-1">{r.description}</p>
                 <div className="flex items-center gap-4 mt-4 text-xs text-ink-400">
                   <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {r.generated}</span>
-                  <span className="font-semibold text-ink-200">{matchingCount.toLocaleString()} real records</span>
+                  <span className="font-semibold text-ink-200">{matchingCount.toLocaleString('en-IN')} real records</span>
                 </div>
                 <Button variant="secondary" size="sm" className="w-full mt-4" onClick={() => handleExport(r.id, r.type)} disabled={exporting === r.id}>
                   {exporting === r.id ? (

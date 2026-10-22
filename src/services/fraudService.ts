@@ -10,6 +10,7 @@ export interface AnalyzeInput {
   merchantCategory: string;
   merchantUrl?: string;
   location: string;
+  locationSource?: 'REAL_GPS' | 'SCENARIO_PROFILE' | 'MANUAL_ENTRY' | 'UNKNOWN';
   latitude?: number | null;
   longitude?: number | null;
   accuracy?: number | null;
@@ -72,11 +73,12 @@ export async function ingestTransaction(input: AnalyzeInput): Promise<{ result: 
     previousLongitude: transaction.previousLongitude,
     distanceFromPreviousKm: transaction.distanceFromPreviousKm,
     location: transaction.location,
+    locationSource: transaction.locationSource,
   };
   return { result, transaction };
 }
 
-export async function getLastLocation(): Promise<{ hasPrevious: boolean; location: { latitude: number; longitude: number; accuracy?: number; displayName?: string; date?: string; time?: string; transactionId?: string } | null }> {
+export async function getLastLocation(): Promise<{ hasPrevious: boolean; location: { latitude: number; longitude: number; accuracy?: number; displayName?: string; locationSource?: 'REAL_GPS' | 'SCENARIO_PROFILE' | 'MANUAL_ENTRY' | 'UNKNOWN'; date?: string; time?: string; transactionId?: string } | null }> {
   try {
     const response = await axios.get(`${API_URL}/transactions/last-location`);
     return response.data;
@@ -120,9 +122,12 @@ export async function getTransactionById(id: string): Promise<Transaction | null
   try {
     const response = await axios.get(`${API_URL}/transactions/${id}`);
     return response.data;
-  } catch (e) {
+  } catch (e: any) {
     console.warn(`Failed to fetch transaction with id ${id}:`, e);
-    return null;
+    const msg = e.response?.data?.msg || (e.response?.status === 404 ? 'Transaction not found' : e.response?.status === 403 ? 'You are not authorized to view this transaction' : 'Failed to fetch transaction');
+    const err = new Error(msg);
+    (err as any).response = e.response;
+    throw err;
   }
 }
 

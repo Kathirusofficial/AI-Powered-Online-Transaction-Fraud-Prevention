@@ -13,10 +13,21 @@ const TransactionSchema = new mongoose.Schema({
   },
   userName: String,
   amount: Number,
+  currency: {
+    type: String,
+    default: 'INR'
+  },
+  amountInr: Number,
+  modelAmountUsd: Number,
   type: String,
   merchantCategory: String,
   merchantUrl: String,
   location: String,
+  locationSource: {
+    type: String,
+    enum: ['REAL_GPS', 'SCENARIO_PROFILE', 'MANUAL_ENTRY', 'UNKNOWN'],
+    default: 'SCENARIO_PROFILE'
+  },
   latitude: Number,
   longitude: Number,
   accuracy: Number,

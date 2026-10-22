@@ -1,35 +1,61 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, MapPin, Calendar, Clock, Smartphone, DollarSign, Activity, AlertCircle, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Clock, Smartphone, IndianRupee, Activity, AlertCircle, ShieldCheck } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PredictionBadge, RiskBadge } from '@/components/common/Badge';
 import RiskGauge from '@/components/common/RiskGauge';
 import { LoadingState, ErrorState } from '@/components/common/States';
 import { getTransactionById } from '@/services/fraudService';
-import type { Transaction } from '@/types';
-import { formatCurrency, riskColors } from '@/utils/helpers';
+import type { Transaction, RiskLevel } from '@/types';
+import { formatCurrencyINR, formatLocation, riskColors } from '@/utils/helpers';
+
+function getRiskColorConfig(level?: string) {
+  const norm = String(level || '').toLowerCase().trim();
+  if (norm.includes('crit')) return riskColors.Critical;
+  if (norm.includes('high')) return riskColors.High;
+  if (norm.includes('med')) return riskColors.Medium;
+  return riskColors.Low;
+}
+
+function normalizeRiskLevel(level?: string): RiskLevel {
+  const norm = String(level || '').toLowerCase().trim();
+  if (norm.includes('crit')) return 'Critical';
+  if (norm.includes('high')) return 'High';
+  if (norm.includes('med')) return 'Medium';
+  return 'Low';
+}
 
 export default function TransactionDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [txn, setTxn] = useState<Transaction | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
-    setError(false);
-    getTransactionById(id || '').then(t => {
-      if (t) setTxn(t);
-      else setError(true);
-      setLoading(false);
-    });
+    setErrorMsg(null);
+    getTransactionById(id || '')
+      .then(t => {
+        if (t) {
+          setTxn(t);
+        } else {
+          setErrorMsg('Transaction not found');
+        }
+        setLoading(false);
+      })
+      .catch((err: any) => {
+        const msg = err.response?.data?.msg || err.message || 'Transaction not found';
+        setErrorMsg(msg);
+        setLoading(false);
+      });
   }, [id]);
 
   if (loading) return <DashboardLayout><LoadingState message="Loading transaction details..." /></DashboardLayout>;
-  if (error || !txn) return <DashboardLayout><ErrorState message="Transaction not found" onRetry={() => navigate('/transactions')} /></DashboardLayout>;
+  if (errorMsg || !txn) return <DashboardLayout><ErrorState message={errorMsg || "Transaction not found"} onRetry={() => navigate('/transactions')} /></DashboardLayout>;
 
-  const c = riskColors[txn.riskLevel];
+  const c = getRiskColorConfig(txn.riskLevel);
+  const normalizedLevel = normalizeRiskLevel(txn.riskLevel);
 
   return (
     <DashboardLayout>
@@ -48,15 +74,28 @@ export default function TransactionDetails() {
             <h3 className="text-sm font-semibold text-ink-100 mb-4 flex items-center gap-2"><span className="w-1 h-4 bg-accent-500 rounded-full" /> Transaction Overview</h3>
             <div className="grid sm:grid-cols-2 gap-4">
               {[
-                { label: 'Transaction ID', value: txn.id, icon: DollarSign },
-                { label: 'Amount', value: formatCurrency(txn.amount), icon: DollarSign },
+                { label: 'Transaction ID', value: txn.id, icon: Activity },
+                { label: 'Amount', value: formatCurrencyINR(txn.amount), icon: IndianRupee },
                 { label: 'Type', value: txn.type, icon: Activity },
                 { label: 'Merchant', value: txn.merchantCategory, icon: Activity },
                 { label: 'Date', value: txn.date, icon: Calendar },
                 { label: 'Time', value: txn.time, icon: Clock },
-                { label: 'Location', value: txn.location, icon: MapPin },
+                { label: 'Location', value: formatLocation(txn.location), icon: MapPin },
                 ...(txn.latitude && txn.longitude ? [
                   { label: 'GPS Coordinates', value: `${txn.latitude}, ${txn.longitude}`, icon: MapPin }
+                ] : []),
+                ...(txn.locationSource ? [
+                  { 
+                    label: 'Location Source', 
+                    value: txn.locationSource === 'REAL_GPS' 
+                      ? 'Real Browser GPS' 
+                      : txn.locationSource === 'SCENARIO_PROFILE' 
+                        ? 'Scenario Profile (India Hub)' 
+                        : txn.locationSource === 'MANUAL_ENTRY'
+                          ? 'Manual Test Entry'
+                          : 'Scenario Profile', 
+                    icon: MapPin 
+                  }
                 ] : []),
                 { label: 'Device', value: txn.deviceType, icon: Smartphone },
               ].map(f => {
@@ -77,10 +116,10 @@ export default function TransactionDetails() {
           </div>
 
           <div className="card p-6 flex flex-col items-center justify-center">
-            <RiskGauge score={txn.riskScore} level={txn.riskLevel} size={160} />
+            <RiskGauge score={txn.riskScore} level={normalizedLevel} size={160} />
             <div className="flex items-center gap-2 mt-4">
               <PredictionBadge prediction={txn.prediction} />
-              <RiskBadge level={txn.riskLevel} />
+              <RiskBadge level={normalizedLevel} />
             </div>
             <div className="grid grid-cols-2 gap-3 w-full mt-5">
               <div className="bg-ink-850 rounded-lg p-3 text-center">
@@ -101,7 +140,7 @@ export default function TransactionDetails() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {[
               { label: 'Transaction Frequency', value: `${txn.transactionFrequency}/day` },
-              { label: 'Previous Amount', value: formatCurrency(txn.previousTransactionAmount) },
+              { label: 'Previous Amount', value: formatCurrencyINR(txn.previousTransactionAmount) },
               { label: 'Account Age', value: `${txn.accountAge} days` },
               { label: 'Location Distance', value: `${(txn.distanceFromPreviousKm !== undefined ? txn.distanceFromPreviousKm : txn.distanceFromPrevious).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} km` },
               { label: 'IP Risk Score', value: `${txn.ipRiskScore}/100` },

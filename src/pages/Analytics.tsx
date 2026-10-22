@@ -181,11 +181,11 @@ function ModelInfoCard() {
         </div>
         <div className="bg-background/60 p-3 rounded-lg border border-border/50">
           <p className="text-[11px] font-semibold text-text-secondary uppercase tracking-wider">Train Samples</p>
-          <p className="text-sm font-bold text-text-primary mt-1">{modelInfo?.training_samples?.toLocaleString() || '1,296,675'}</p>
+          <p className="text-sm font-bold text-text-primary mt-1">{modelInfo?.training_samples?.toLocaleString('en-IN') || '12,96,675'}</p>
         </div>
         <div className="bg-background/60 p-3 rounded-lg border border-border/50">
           <p className="text-[11px] font-semibold text-text-secondary uppercase tracking-wider">Test Samples</p>
-          <p className="text-sm font-bold text-text-primary mt-1">{modelInfo?.testing_samples?.toLocaleString() || '555,719'}</p>
+          <p className="text-sm font-bold text-text-primary mt-1">{modelInfo?.testing_samples?.toLocaleString('en-IN') || '5,55,719'}</p>
         </div>
         <div className="bg-background/60 p-3 rounded-lg border border-border/50">
           <p className="text-[11px] font-semibold text-text-secondary uppercase tracking-wider">Scale Pos Weight</p>

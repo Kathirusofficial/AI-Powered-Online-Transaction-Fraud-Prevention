@@ -99,6 +99,7 @@ class RealFraudFeaturePipeline:
         cat_map = {
             "retail": "shopping_pos",
             "online": "shopping_net",
+            "online shopping": "shopping_net",
             "food & dining": "food_dining",
             "entertainment": "entertainment",
             "travel": "travel",
@@ -106,6 +107,9 @@ class RealFraudFeaturePipeline:
             "groceries": "grocery_pos",
             "healthcare": "personal_care",
             "gas": "gas_transport",
+            "fuel": "gas_transport",
+            "utilities": "home",
+            "education": "misc_pos",
             "other": "misc_pos",
         }
         category = cat_map.get(cat_raw, cat_raw.replace(" & ", "_").replace(" ", "_"))

@@ -99,6 +99,7 @@ except Exception as e:
 # Request and Response Pydantic Schemas
 class TransactionPayload(BaseModel):
     amount: float = Field(..., gt=0, description="Transaction monetary amount (must be > 0)")
+    amount_inr: Optional[float] = Field(default=None, description="Transaction monetary amount in INR")
     merchantCategory: Optional[str] = Field(default="shopping_net", description="Merchant category string")
     location: Optional[str] = Field(default="", description="Transaction location or city")
     date: Optional[str] = Field(default="", description="Transaction date (YYYY-MM-DD)")
@@ -224,15 +225,31 @@ def predict_transaction(payload: TransactionPayload):
         risk_factors = []
         normal_factors = []
 
-        # 1. Amount Signals
+        # 1. Amount Signals (localized to INR presentation)
+        amt_inr = float(input_data.get("amount_inr") or (amt * 83.3333))
+        def format_inr(number: float) -> str:
+            n = int(round(abs(number)))
+            s = str(n)
+            if len(s) <= 3:
+                return f"₹{s}"
+            last3 = s[-3:]
+            rem = s[:-3]
+            groups = []
+            while len(rem) > 2:
+                groups.insert(0, rem[-2:])
+                rem = rem[:-2]
+            if rem:
+                groups.insert(0, rem)
+            return "₹" + ",".join(groups) + "," + last3
+
         if amt >= 5000:
-            risk_factors.append(f"High monetary value (${amt:,.2f}) significantly elevates transaction risk")
+            risk_factors.append(f"High monetary value ({format_inr(amt_inr)}) significantly elevates transaction risk")
         elif amt >= 1500:
-            risk_factors.append(f"Elevated transaction amount (${amt:,.2f}) flagged for risk verification")
+            risk_factors.append(f"Elevated transaction amount ({format_inr(amt_inr)}) flagged for risk verification")
         elif amt <= 500:
-            normal_factors.append(f"Transaction amount (${amt:,.2f}) is within normal purchasing bounds")
+            normal_factors.append(f"Transaction amount ({format_inr(amt_inr)}) is within normal purchasing bounds")
         else:
-            normal_factors.append(f"Transaction amount (${amt:,.2f}) aligns with typical transaction range")
+            normal_factors.append(f"Transaction amount ({format_inr(amt_inr)}) aligns with typical transaction range")
 
         # 2. Distance Signals
         if dist >= 1000:
