@@ -531,7 +531,18 @@ export default function Monitor() {
       }
     } catch (err: unknown) {
       console.error('[Monitor] Ingestion error:', err);
-      const errMsg = (err as { response?: { data?: { msg?: string } }; message?: string })?.response?.data?.msg || (err as Error)?.message || 'Transaction ingestion failed';
+      const res = (err as { response?: { status?: number; data?: { msg?: string } }; message?: string })?.response;
+      if (res?.status === 401) {
+        setStreamState('stopped');
+        streamStateRef.current = 'stopped';
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+          timerRef.current = null;
+        }
+        toast('Authentication expired. Please log in again.', 'error');
+        return;
+      }
+      const errMsg = res?.data?.msg || (err as Error)?.message || 'Transaction ingestion failed';
       toast(errMsg, 'error');
     } finally {
       isProcessingRef.current = false;

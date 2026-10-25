@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import axios from 'axios';
 
 interface User {
@@ -19,30 +19,94 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+export function getCleanToken(): string | null {
+  try {
+    const raw = localStorage.getItem('fraudshield_token');
+    if (!raw) return null;
+    const clean = raw.trim().replace(/^["']+|["']+$/g, '');
+    if (!clean || clean === 'undefined' || clean === 'null') {
+      localStorage.removeItem('fraudshield_token');
+      return null;
+    }
+    return clean;
+  } catch {
+    return null;
+  }
+}
+
+// Request Interceptor: dynamically attach valid JWT to every outgoing request
+axios.interceptors.request.use(
+  (config) => {
+    const token = getCleanToken();
+    if (token) {
+      if (config.headers && typeof config.headers.set === 'function') {
+        config.headers.set('Authorization', `Bearer ${token}`);
+      } else {
+        config.headers = config.headers || {};
+        config.headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response Interceptor: catch 401 unauthorized errors and invalidate stale session
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error?.response?.status === 401) {
+      const msg = error.response.data?.msg || '';
+      if (typeof msg === 'string' && (msg.includes('Token is not valid') || msg.includes('authorization denied') || msg.includes('User account not found') || msg.includes('jwt'))) {
+        localStorage.removeItem('fraudshield_token');
+        localStorage.removeItem('fraudshield_user');
+        window.dispatchEvent(new CustomEvent('fraudshield:session_expired'));
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
     try {
       const saved = localStorage.getItem('fraudshield_user');
-      const token = localStorage.getItem('fraudshield_token');
-      if (saved && token && saved !== 'undefined') {
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        return JSON.parse(saved);
+      const token = getCleanToken();
+      if (saved && token && saved !== 'undefined' && saved !== 'null') {
+        const parsed = JSON.parse(saved);
+        if (parsed && (parsed.id || parsed._id)) {
+          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          return parsed;
+        }
       }
     } catch (e) {
       console.error('Failed to parse user from local storage', e);
-      localStorage.removeItem('fraudshield_user');
-      localStorage.removeItem('fraudshield_token');
     }
+    localStorage.removeItem('fraudshield_user');
+    localStorage.removeItem('fraudshield_token');
+    delete axios.defaults.headers.common['Authorization'];
     return null;
   });
+
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      setUser(null);
+      delete axios.defaults.headers.common['Authorization'];
+    };
+    window.addEventListener('fraudshield:session_expired', handleSessionExpired);
+    return () => {
+      window.removeEventListener('fraudshield:session_expired', handleSessionExpired);
+    };
+  }, []);
 
   const login = useCallback(async (email: string, password: string) => {
     try {
       const res = await axios.post(`${API_URL}/auth/login`, { email, password });
       const { token, user } = res.data;
-      localStorage.setItem('fraudshield_token', token);
+      const cleanToken = (token || '').trim().replace(/^["']+|["']+$/g, '');
+      localStorage.setItem('fraudshield_token', cleanToken);
       localStorage.setItem('fraudshield_user', JSON.stringify(user));
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      axios.defaults.headers.common['Authorization'] = `Bearer ${cleanToken}`;
       setUser(user);
       return { ok: true };
     } catch (err: unknown) {
@@ -63,9 +127,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const res = await axios.post(`${API_URL}/auth/register`, { name, email, password });
       const { token, user } = res.data;
-      localStorage.setItem('fraudshield_token', token);
+      const cleanToken = (token || '').trim().replace(/^["']+|["']+$/g, '');
+      localStorage.setItem('fraudshield_token', cleanToken);
       localStorage.setItem('fraudshield_user', JSON.stringify(user));
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      axios.defaults.headers.common['Authorization'] = `Bearer ${cleanToken}`;
       setUser(user);
       return { ok: true };
     } catch (err: unknown) {

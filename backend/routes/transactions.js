@@ -487,6 +487,9 @@ router.get('/stats', auth, async (req, res) => {
 router.post('/analyze', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(401).json({ msg: 'User account not found. Please log in again.' });
+    }
     const input = req.body;
 
     // Validate current GPS coordinates if supplied
