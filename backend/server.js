@@ -110,6 +110,15 @@ const connectDB = async () => {
 
 connectDB();
 
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'success',
+    message: 'FraudShield Backend API is running',
+    database: mongoose.connection.readyState === 1 ? 'connected (Atlas)' : 'disconnected',
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
